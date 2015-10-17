@@ -39,24 +39,41 @@ export default async function fetchDoc (dataUrl) {
   } else {
     // NodeJS environment
     //
-    let request = require('request');
+
+    let httpClient = dataUrl.startsWith('https://') ? require('https') : require('http');
+    let url = require('url');
+
     docxBuffer = await new Promise((resolve, reject) => {
-      request({
-        method: 'GET', encoding: null, url: dataUrl, followRedirect: false
-      }, (err, resp, body) => {
-        if(err || resp.statusCode >= 400) {
+      let chunks = [], dataLen = 0;
+
+      let req = httpClient.get(url.parse(dataUrl), (resp) => {
+        if(resp.statusCode >= 300 && resp.statusCode <= 399) {
+          /* If 'share option' of google doc is closed,
+             `fetch` will be redirected to Google Login page */
+          reject(ERRORS.NOT_SHARED); return;
+
+        } else if(resp.statusCode >= 400) {
           reject(ERRORS.INVALID_DATA_URL); return;
         }
 
-        if(resp.statusCode >= 300 && resp.statusCode < 399) {
-          /*
-            If 'share option' of google doc is closed,
-            the http client will be redirected to Google Login page
-          */
-          reject(ERRORS.NOT_SHARED); return;
-        }
+        resp.on('data', (chunk) => {
+          chunks.push(chunk); dataLen += chunk.length;
+        });
 
-        resolve(body);
+        resp.on('end', () => {
+          let buffer = new Buffer(dataLen);
+          let pos = 0;
+          for( let chunk of chunks ){
+            chunk.copy(buffer, pos);
+            pos += chunk.length;
+          }
+
+          resolve(buffer);
+        });
+      });
+
+      req.on('error', (err) => {
+        reject(ERRORS.INVALID_DATA_URL);
       });
     });
   }
