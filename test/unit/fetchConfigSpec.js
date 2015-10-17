@@ -2,7 +2,7 @@ import {expect} from 'chai';
 import {fetchConfig, ERRORS, DEFAULTS} from '../../src';
 import {processConfig} from '../../src/fetchConfig'
 
-describe('htparser.config', () => {
+describe('htparser.fetchConfig', () => {
   it('should reject when there is no corresponding ethercalc for the given ID', () => {
 
     // Uses networkm asynchronous!
