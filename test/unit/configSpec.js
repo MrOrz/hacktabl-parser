@@ -4,15 +4,15 @@ import {processConfig} from '../../src/fetchConfig'
 
 describe('htparser.config', () => {
   it('should reject when there is no corresponding ethercalc for the given ID', () => {
-    // Asynchronous
+
+    // Uses networkm asynchronous!
     return expect(fetchConfig('_THIS_SHOULD_NOT_EXIST_')).to.be.rejectedWith(ERRORS.NO_ETHERCALC);
   });
 
   it('should reject when both DOC_ID and (DATA_URL, EDIT_URL) are absent', () => {
-    expect(processConfig({})).to.throw(ERRORS.NO_DOC_ID);
-    expect(processConfig({DOC_ID: 'test'})).to.not.throw;
-    expect(processConfig({DATA_URL: 'test'})).to.throw(ERRORS.NO_EDIT_URL);
-    expect(processConfig({EDIT_URL: 'test'})).to.throw(ERRORS.NO_DATA_URL);
+    expect(() => processConfig({DOC_ID: 'test'})).to.not.throw;
+    expect(() => processConfig({DATA_URL: 'test'})).to.throw(ERRORS.NO_EDIT_URL);
+    expect(() => processConfig({EDIT_URL: 'test'})).to.throw(ERRORS.NO_DATA_URL);
   });
 
   it('should use docx as data source', () => {

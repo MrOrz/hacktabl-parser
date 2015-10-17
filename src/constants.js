@@ -1,6 +1,7 @@
 export const ERRORS = {
   NO_ETHERCALC: 'Ethercalc ID does not exist',
-  NO_DOC_INFO: 'Neither DOC_ID nor DATA_URL exists in the specified Ethercalc',
+  NO_EDIT_URL: 'Neither DOC_ID nor EDIT_URL exists in the specified Ethercalc',
+  NO_DATA_URL: 'Neither DOC_ID nor DATA_URL exists in the specified Ethercalc'
 }
 
 export const DEFAULTS = {
