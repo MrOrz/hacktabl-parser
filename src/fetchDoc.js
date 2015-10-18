@@ -1,4 +1,5 @@
 import JSZip from 'jszip';
+import fetch from 'isomorphic-fetch';
 import {ERRORS} from './constants';
 
 /* DOC file fetcher & extractor */
@@ -7,15 +8,15 @@ export default async function fetchDoc (dataUrl) {
   // First, try fetching the docx file form the given dataUrl
   //
   let docxBuffer;
+  let resp;
+  try {
+    resp = await fetch(dataUrl);
+  } catch (e) {
+    if( e.message ){
+      // node-fetch errors has 'message' property
+      throw ERRORS.INVALID_DATA_URL;
 
-  if( typeof window !== 'undefined' ){
-    // Browser environment
-    //
-    let fetch = require('isomorphic-fetch');
-    let resp;
-    try {
-      resp = await fetch(dataUrl);
-    } catch (e) {
+    } else {
       /* If 'share option' of google doc is closed,
          `fetch` will be redirected to Google Login page,
          which does not allow cross-origin requests.
@@ -29,51 +30,41 @@ export default async function fetchDoc (dataUrl) {
        */
       throw ERRORS.NOT_SHARED;
     }
+  }
 
-    if(!resp.ok) {
-      throw ERRORS.INVALID_DATA_URL;
-    }
+  if(!resp.ok) {
+    throw ERRORS.INVALID_DATA_URL;
+  } else if(resp.url !== dataUrl) {
+    /* If 'share option' of google doc is closed,
+         `fetch` will be redirected to Google Login page. */
 
-    docxBuffer = Uint8Array.from(await resp.arrayBuffer());
+    throw ERRORS.NOT_SHARED;
+  }
+
+  if( resp.arrayBuffer ){
+    // Browsers should support arrayBuffer
+    //
+    docxBuffer = await resp.arrayBuffer();
 
   } else {
-    // NodeJS environment
+    // node-fetch does not support resp.arrayBuffer
     //
 
-    let httpClient = dataUrl.startsWith('https://') ? require('https') : require('http');
-    let url = require('url');
-
     docxBuffer = await new Promise((resolve, reject) => {
-      let chunks = [], dataLen = 0;
+      let chunks = [];
+      let bytes = 0;
 
-      let req = httpClient.get(url.parse(dataUrl), (resp) => {
-        if(resp.statusCode >= 300 && resp.statusCode <= 399) {
-          /* If 'share option' of google doc is closed,
-             `fetch` will be redirected to Google Login page */
-          reject(ERRORS.NOT_SHARED); return;
-
-        } else if(resp.statusCode >= 400) {
-          reject(ERRORS.INVALID_DATA_URL); return;
-        }
-
-        resp.on('data', (chunk) => {
-          chunks.push(chunk); dataLen += chunk.length;
-        });
-
-        resp.on('end', () => {
-          let buffer = new Buffer(dataLen);
-          let pos = 0;
-          for( let chunk of chunks ){
-            chunk.copy(buffer, pos);
-            pos += chunk.length;
-          }
-
-          resolve(buffer);
-        });
+      resp.body.on('error', err => {
+        reject(INVALID_DATA_URL);
       });
 
-      req.on('error', (err) => {
-        reject(ERRORS.INVALID_DATA_URL);
+      resp.body.on('data', chunk => {
+        chunks.push(chunk);
+        bytes += chunk.length;
+      });
+
+      resp.body.on('end', () => {
+        resolve(Buffer.concat(chunks));
       });
     });
   }
