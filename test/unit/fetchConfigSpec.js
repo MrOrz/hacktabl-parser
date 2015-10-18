@@ -3,9 +3,7 @@ import {fetchConfig, ERRORS, DEFAULTS} from '../../src';
 import {processConfig} from '../../src/fetchConfig'
 
 describe('htparser.fetchConfig', () => {
-  it('should reject when there is no corresponding ethercalc for the given ID', () => {
-
-    // Uses networkm asynchronous!
+  it('should reject when there is no corresponding ethercalc for the given ID (requires Internet)', () => {
     return expect(fetchConfig('_THIS_SHOULD_NOT_EXIST_')).to.be.rejectedWith(ERRORS.NO_ETHERCALC);
   });
 
