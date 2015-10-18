@@ -3,9 +3,10 @@
   "version": "0.0.1",
   "description": "Parsing google doc w/ comparison table into Javascript object structure",
   "main": "lib/index.js",
+  "browser": "lib/index.browser.js",
   "scripts": {
     "watch": "npm test -- --watch",
-    "build": "babel src --out-dir lib --stage $npm_package_config_babel_stage --optional runtime",
+    "build": "babel src --out-dir lib --stage $npm_package_config_babel_stage --optional runtime && webpack",
     "prepublish": "NODE_ENV=production npm run build",
     "test": "mocha --require ./config/mocha-babel test/unit/*.js",
     "lint": "eslint --fix src/** test/unit/**",
@@ -39,7 +40,9 @@
   },
   "devDependencies": {
     "babel": "^5.8.23",
+    "babel-core": "^5.8.25",
     "babel-eslint": "^4.1.3",
+    "babel-loader": "^5.3.2",
     "chai": "^3.3.0",
     "chai-as-promised": "^5.1.0",
     "coveralls": "^2.11.4",
@@ -47,7 +50,8 @@
     "istanbul": "git://github.com/gotwarlost/istanbul#source-map",
     "mocha": "^2.3.3",
     "mocha-lcov-reporter": "^1.0.0",
-    "parallelshell": "^2.0.0"
+    "parallelshell": "^2.0.0",
+    "webpack": "^1.12.2"
   },
   "eslintConfig": {
     "parser": "babel-eslint",
