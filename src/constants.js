@@ -5,7 +5,7 @@ export const ERRORS = {
 
   NOT_SHARED: 'Specified Google Doc should be shared to anyone',
   INVALID_DATA_URL: 'Unable to fetch the given Google Doc with the specified DOC_ID or DATA_URL',
-}
+};
 
 export const DEFAULTS = {
   HEADER_COLUMNS: 1,
@@ -14,4 +14,13 @@ export const DEFAULTS = {
   TITLE: 'Hacktabl: collaborative table for everyone',
   TYPE: 'EXPANDED',
   EMPHASIZE_NO_REF: false
-}
+};
+
+export const COMMENTS = {
+  REF_MISSING: 'REF_MISSING',
+  REF_CONTROVERSIAL: 'REF_CONTROVERSIAL',
+  QUESTIONABLE: 'QUESTIONABLE',
+  NOTE: 'NOTE',
+  SECOND: 'SECOND',
+  OTHER: 'OTHER'
+};
