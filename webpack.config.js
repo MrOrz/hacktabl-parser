@@ -17,7 +17,12 @@ module.exports = {
     }),
     new webpack.optimize.UglifyJsPlugin({
       sourceMap: false
-    })
+    }),
+
+    // Ignore jsdom in src/parseTable,
+    //        http, https and url in src/fetchDoc
+    //
+    new webpack.IgnorePlugin(/^(?:jsdom|http|https|url)$/)
   ],
   debug: false
 };
