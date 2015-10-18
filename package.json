@@ -14,7 +14,7 @@
     "travis": "rm -rf ./coverage && istanbul cover _mocha --report lcovonly -- --require ./config/mocha-babel test/unit/*.js && cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js"
   },
   "config": {
-    "babel_stage": "1"
+    "babel_stage": "2"
   },
   "repository": {
     "type": "git",
