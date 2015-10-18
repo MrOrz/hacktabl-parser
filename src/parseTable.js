@@ -1,9 +1,9 @@
 /* Table parser */
 
 import {COMMENTS, ERRORS} from './constants';
-import {ColGroup, RowGroup} from './components';
+import {ColGroup, RowGroup, Paragraph, HyperLink, Run} from './components';
 
-export async function parseToDocument(xml) {
+export async function parseToDocument(xml, jsdomMode='xml') {
   if(typeof window !== 'undefined') {
     // Browser environement
     //
@@ -18,7 +18,7 @@ export async function parseToDocument(xml) {
       let jsdom = require('jsdom');
       jsdom.env({
         html: xml,
-        parsingMode: 'xml',
+        parsingMode: jsdomMode,
         done: (err, global) => {
           if(err) { reject(err); return; }
           resolve(global.document);
@@ -29,13 +29,26 @@ export async function parseToDocument(xml) {
 
 }
 
+export async function parseRels(relsXML) {
+  // Not sure why we need to use parsingMode='html' for jsdom to work...
+  //
+  let relsDocument = await parseToDocument(relsXML, 'html');
+
+  let hyperLinkMap = {};
+  for(let hyperLink of relsDocument.querySelectorAll('relationship[type$="hyperlink"]')) {
+    hyperLinkMap[hyperLink.getAttribute('Id')] = hyperLink.getAttribute('Target');
+  }
+
+  return hyperLinkMap;
+}
+
 export async function parseComments(commentsXML) {
   let commentsDocument = await parseToDocument(commentsXML);
   // Parse comments
   //
   let commentMap = {};
 
-  Array.prototype.forEach.call(commentsDocument.querySelectorAll('w\\:comment'), commentElement => {
+  for(let commentElement of commentsDocument.querySelectorAll('w\\:comment')){
     let id = commentElement.getAttribute('w:id');
     let text =
       Array.prototype.map.call(commentElement.querySelectorAll('w\\:t'),
@@ -62,14 +75,102 @@ export async function parseComments(commentsXML) {
       date: new Date(commentElement.getAttribute('w:date')),
       id, type, text
     };
-  });
+  };
 
   return commentMap;
 }
 
+function processParagraphChildren(childNodes, hyperLinkMap, config, commentIdsInRange){
+  // Make an array copy of childNodes NodeList because we may mutate the list later.
+  //
+  let nodeQueue = Array.prototype.slice.call(childNodes, 0);
+
+  let children = [];
+  let lastRun;
+  commentIdsInRange = commentIdsInRange || {}; // Currently activated comment ids
+
+  for(let i = 0; i < nodeQueue.length; i+=1){
+    let node = nodeQueue[i];
+    switch(node.nodeName){
+      case 'w:hyperlink':
+        if( config.HIGHLIGHT ){
+          lastRun = null; // Force new run
+          let hyperlink = new HyperLink();
+          hyperlink.children = processParagraphChildren(node.childNodes, hyperLinkMap, config, commentIdsInRange);
+          children.push(hyperlink);
+        } else {
+          // Directly unwrap the w:hyperlink
+          nodeQueue.splice(i+1, 0, ...node.childNodes)
+        }
+
+        break;
+
+      case 'w:r':
+        let runCfg = {
+          text: node.textContent,
+          isB: node.querySelector('w\\:rPr > w\\:b[w\\:val="1"]') !== null,
+          isI: node.querySelector('w\\:rPr > w\\:i[w\\:val="1"]') !== null,
+          isU: node.querySelector('w\\:rPr > w\\:u[w\\:val="1"]') !== null,
+        };
+
+        if(!runCfg.text) {
+          // No text in run, just skip
+          continue;
+        }
+
+        if (lastRun) {
+          let isConfigMatch = lastRun.isB === runCfg.isB &&
+                              lastRun.isI === runCfg.isI &&
+                              lastRun.isU === runCfg.isU;
+
+          if (!config.HIGHLIGHT || (config.HIGHLIGHT && isConfigMatch)) {
+            // Reuse lastRun
+            lastRun.text += node.textContent;
+            continue;
+          }
+        }
+
+        // Create new run
+        runCfg.commentIds = Object.keys(commentIdsInRange);
+        lastRun = new Run(runCfg);
+        children.push(lastRun);
+
+        break;
+
+      case 'w:commentRangeStart':
+        lastRun = null; // Force new run
+        commentIdsInRange[+node.getAttribute('w:id')] = true;
+        break;
+
+      case 'w:commentRangeEnd':
+        lastRun = null; // Force new run
+        delete commentIdsInRange[+node.getAttribute('w:id')];
+        break;
+    }
+  };
+
+  return children;
+}
+
+// Process runs, hyperlinks and comments in a single paragraph
+// into a paragraph instance.
+//
+export function processParagraph(pElem, hyperLinkMap, config) {
+  let level = -1; // Normal text
+  let numPrElem = pElem.querySelector('w\\:pPr > w\\:numPr');
+  if(numPrElem) {
+    level = +numPrElem.querySelector('w\\:ilvl').getAttribute('w:val')
+  }
+
+  let paragraph = new Paragraph(level);
+  paragraph.children = processParagraphChildren(pElem.childNodes, hyperLinkMap, config);
+
+  return paragraph;
+}
+
 // Process header rows to populate header rows (column headers)
 //
-export function processHeaderRows(rowElems, commentMap, config) {
+export function processHeaderRows(rowElems, hyperLinkMap, config) {
   let columnHeaders = [];
   let parentHeaderOfColumn = []; // Maps column id to parent header
 
@@ -127,14 +228,15 @@ export function processHeaderRows(rowElems, commentMap, config) {
   return columnHeaders;
 }
 
-export default async function parseTable (docXML, commentsXML, config) {
-  let commentMap = await parseComments(commentsXML);
-  let docDocument = await parseToDocument(docXML);
+export default async function parseTable (xmls, config) {
+  let commentMap = await parseComments(xmls.comments);
+  let hyperLinkMap = await parseRels(xmls.rels);
+  let docDocument = await parseToDocument(xmls.document);
 
   let tableElem = docDocument.querySelector('w\\:tbl');
   let rowElems = tableElem.querySelectorAll('w\\:tr');
 
-  let columnHeaders = processHeaderRows(rowElems, commentMap, config);
+  let columnHeaders = processHeaderRows(rowElems, hyperLinkMap, config);
 
   return {
 

@@ -1,5 +1,5 @@
 import {expect} from 'chai';
-import parseTable, {parseComments, processHeaderRows, parseToDocument} from '../../src/parseTable';
+import parseTable, {parseComments, processHeaderRows, processParagraph, parseToDocument, parseRels} from '../../src/parseTable';
 import {processConfig} from '../../src/fetchConfig';
 import {ERRORS, COMMENTS} from '../../src/';
 import fs from 'fs';
@@ -80,5 +80,83 @@ describe('htparser.parseTable', () => {
       expect(() => processHeaderRows(tables[2], {}, processConfig({DOC_ID:'foo'}))).to.throw(ERRORS.INVALID_MERGED_COLUMN_HEADER);
       expect(() => processHeaderRows(tables[3], {}, processConfig({DOC_ID:'foo', HEADER_ROWS: 3}))).to.throw(ERRORS.INVALID_COLUMN_HEADER_NESTING);
     });
-  })
+  });
+
+  describe('processParagraph', () => {
+    //
+    // See the real paragraphs:
+    //
+    // https://docs.google.com/document/d/1XZp_bevmHcpjhLKxa9-9n3F0mbIo89h1vN0bLpnKASs/edit?usp=sharing
+    //
+    let paragraphs, hyperLinkMap;
+
+    before('populate paragraphs', async function(){
+      let doc = await parseToDocument(readFixture('processParagraph.xml'));
+      paragraphs = doc.querySelectorAll('w\\:body > w\\:p');
+      hyperLinkMap = await parseRels(readFixture('processParagraph.xml.rels'));
+      console.log('HYPERLINK_MAP', hyperLinkMap);
+    });
+
+    it('should process paragraph with 1 single run', () => {
+      let paragraph = processParagraph(paragraphs[0], hyperLinkMap, processConfig({DOC_ID:'foo'}));
+      expect(paragraph.children).to.have.length(1);
+      expect(paragraph.children[0]).to.have.property('text', 'A paragraph');
+    });
+
+    it('should merge adjacent runs with identical style', () => {
+      let paragraph = processParagraph(paragraphs[1], hyperLinkMap, processConfig({DOC_ID:'foo', HIGHLIGHT: true}));
+      expect(paragraph.children).to.have.length(1);
+      expect(paragraph.children[0]).to.have.property('text', 'Second paragraph with text that should be merged into 1 run');
+    });
+
+    it('should identify bullet point levels', () => {
+      let paragraph2 = processParagraph(paragraphs[2], hyperLinkMap, processConfig({DOC_ID:'foo'}));
+      expect(paragraph2).to.have.property('level', 0);
+      expect(paragraph2.children[0].text).to.eql('Bullet item 1');
+
+      expect(processParagraph(paragraphs[4], hyperLinkMap, processConfig({DOC_ID:'foo'}))).to.have.property('level', 1);
+      expect(processParagraph(paragraphs[6], hyperLinkMap, processConfig({DOC_ID:'foo'}))).to.have.property('level', 0);
+    });
+
+    it('should process bold, italic and underline text', () => {
+      // Highlight false: merged into 1 run
+      let paragraph = processParagraph(paragraphs[7], hyperLinkMap, processConfig({DOC_ID:'foo', HIGHLIGHT: false}));
+      expect(paragraph.children).to.have.length(1);
+
+      // Highlight true: bold, italic, underline parsed.
+      paragraph = processParagraph(paragraphs[7], hyperLinkMap, processConfig({DOC_ID:'foo', HIGHLIGHT: true}));
+      expect(paragraph.children).to.have.length(7);
+
+      // Bold & italic run
+      expect(paragraph.children[5]).to.have.property('isB', true);
+      expect(paragraph.children[5]).to.have.property('isI', true);
+    });
+
+    it('should process comments', () => {
+      // Highlight false, should not show bold
+      let paragraph = processParagraph(paragraphs[8], hyperLinkMap, processConfig({DOC_ID:'foo'}));
+      expect(paragraph.children).to.have.length(3);
+      expect(paragraph.children[1]).to.have.property('commentIds').and.eqls(['0', '1']);
+      expect(paragraph.children[2]).to.have.property('text', ' contents.');
+
+      // Overlapping comments
+      paragraph = processParagraph(paragraphs[9], hyperLinkMap, processConfig({DOC_ID:'foo'}));
+      expect(paragraph.children).to.have.length(4);
+      expect(paragraph).to.have.deep.property('children[1].commentIds').and.eqls(['2', '3']);
+      expect(paragraph).to.have.deep.property('children[2].commentIds').and.eqls(['3']);
+    });
+
+    it('should process hyperlinks', () => {
+      // Highlight must be true to parse hyperlinks
+      let paragraph = processParagraph(paragraphs[10], hyperLinkMap, processConfig({DOC_ID:'foo', HIGHLIGHT: true}));
+
+      // Comment (<w:commentRangeStart>) in anchor will cut hyperlink into pieces
+      //
+      expect(paragraph.children).to.have.length(7);
+
+      let hyperlink = paragraph.children[2];
+      expect(hyperlink).to.have.property('href', 'http://google.com');
+      expect(hyperlink.children).to.have.length(1);
+    });
+  });
 });
