@@ -5,10 +5,13 @@ export const ERRORS = {
 
   NOT_SHARED: 'Specified Google Doc should be shared to anyone',
   INVALID_DATA_URL: 'Unable to fetch the given Google Doc with the specified DOC_ID or DATA_URL',
+  INVALID_MERGED_COLUMN_HEADER: 'The header columns adjacent to data should not be merged',
+  INVALID_COLUMN_HEADER_NESTING: 'The header columns are not correctly nested',
 };
 
 export const DEFAULTS = {
   HEADER_COLUMNS: 1,
+  HEADER_ROWS: 1,
   HIGHLIGHT: false,
   LABEL_SUMMARY: 0,
   TITLE: 'Hacktabl: collaborative table for everyone',

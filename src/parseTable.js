@@ -1,8 +1,9 @@
 /* Table parser */
 
-import {COMMENTS} from './constants';
+import {COMMENTS, ERRORS} from './constants';
+import {ColGroup, RowGroup} from './components';
 
-async function parseToDocument(xml) {
+export async function parseToDocument(xml) {
   if(typeof window !== 'undefined') {
     // Browser environement
     //
@@ -66,9 +67,76 @@ export async function parseComments(commentsXML) {
   return commentMap;
 }
 
+// Process header rows to populate header rows (column headers)
+//
+export function processHeaderRows(rowElems, commentMap, config) {
+  let columnHeaders = [];
+  let parentHeaderOfColumn = []; // Maps column id to parent header
+
+  for(let i = 0; i < config.HEADER_ROWS; i+=1) {
+    let isFirstRow = i === 0;
+    let isLeafRow = i === config.HEADER_ROWS-1;
+
+    let cells = rowElems[i].querySelectorAll('w\\:tc');
+    let columnId = 0; // 0 ~ (total column count)-1
+
+    for(let j = 0; j < cells.length; j+=1){
+      let cell = cells[j];
+      let gridSpanElem = cell.querySelector('w\\:gridSpan');
+      let colspan = 1;
+
+      if (gridSpanElem) {
+        colspan = +gridSpanElem.getAttribute('w:val') || colspan;
+      }
+
+      if(columnId < config.HEADER_COLUMNS) {
+        // Skipping header columns
+        columnId += colspan;
+        continue;
+      }
+
+      let colgroup = new ColGroup(cell.textContent, isLeafRow);
+
+      if(isFirstRow) {
+        columnHeaders.push(colgroup);
+      }else{
+        parentHeaderOfColumn[columnId].children.push(colgroup);
+      }
+
+
+      if(isLeafRow && colspan !== 1) {
+        throw ERRORS.INVALID_MERGED_COLUMN_HEADER;
+      }
+
+      // Update parentHeaderOfColumn[] mapping
+      //
+      let parentHeader = parentHeaderOfColumn[columnId];
+      for(let k = 0; k < colspan; k+=1){
+        // If the headers are correctly nested,
+        // each column spanned by this header should map to the same parent header
+        //
+        if(parentHeader !== parentHeaderOfColumn[columnId]) {
+          throw ERRORS.INVALID_COLUMN_HEADER_NESTING;
+        }
+        parentHeaderOfColumn[columnId] = colgroup;
+        columnId += 1;
+      }
+    }
+  }
+
+  return columnHeaders;
+}
+
 export default async function parseTable (docXML, commentsXML, config) {
   let commentMap = await parseComments(commentsXML);
   let docDocument = await parseToDocument(docXML);
 
-  return;
+  let tableElem = docDocument.querySelector('w\\:tbl');
+  let rowElems = tableElem.querySelectorAll('w\\:tr');
+
+  let columnHeaders = processHeaderRows(rowElems, commentMap, config);
+
+  return {
+
+  }
 }
