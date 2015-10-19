@@ -80,14 +80,15 @@ export async function parseComments(commentsXML) {
   return commentMap;
 }
 
-function processParagraphChildren(childNodes, hyperLinkMap, config, commentIdsInRange){
+function processParagraphChildren(childNodes, hyperLinkMap, config, commentIdsInRange = {}){
+  // commentIdsInRange{} is the currently activated comment ids
+
   // Make an array copy of childNodes NodeList because we may mutate the list later.
   //
   let nodeQueue = Array.prototype.slice.call(childNodes, 0);
 
   let children = [];
   let lastRun;
-  commentIdsInRange = commentIdsInRange || {}; // Currently activated comment ids
 
   for(let i = 0; i < nodeQueue.length; i+=1){
     let node = nodeQueue[i];
@@ -196,7 +197,10 @@ export function processHeaderRows(rowElems, hyperLinkMap, config) {
         continue;
       }
 
-      let colgroup = new ColGroup(cell.textContent, isLeafRow);
+      let colgroup = new ColGroup(
+        Array.prototype.map.call(cell.querySelectorAll('w\\:p'), p => processParagraph(p, hyperLinkMap, config)),
+        isLeafRow
+      );
 
       if(isFirstRow) {
         columnHeaders.push(colgroup);
