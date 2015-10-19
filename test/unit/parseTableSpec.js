@@ -134,7 +134,64 @@ describe('htparser.parseTable', () => {
       });
     });
 
-    // describe('data cell processing');
+    describe('data cell processing', () => {
+      //
+      // See the real table:
+      //
+      // https://docs.google.com/document/d/1ea0PFeRbM-7UfAW9xtRLP_UisJb5nf4yvlVuSy9IZz4/edit?usp=sharing
+      //
+      let theCell;
+
+      before('populate the cell', async function(){
+        let doc = await parseToDocument(readFixture('processBodyRows-datacell.xml'));
+        const URL = 'http://google.com';
+        theCell = processBodyRows(doc.querySelectorAll('w\\:tr'), {
+          rId11: URL, rId10: URL, rId9: URL, rId5: URL, rId6: URL, rId7: URL, rId8: URL,
+        }, processConfig({DOC_ID: 'foo'}))[0].cells[0];
+        console.log('THE_CELL', JSON.stringify(theCell, null, "  "));
+      });
+
+      it('should process summary paragraphs', () => {
+        expect(theCell).to.have.property('summaryParagraphs').and.have.length(2);
+        expect(theCell).to.have.deep.property('summaryParagraphs[1].children[0].text', 'Summary 2');
+      });
+      it('should process items with levels', () => {
+        expect(theCell).to.have.deep.property('items[0].level', 0);
+        expect(theCell).to.have.deep.property('items[0].children[0].text', 'Item1');
+        expect(theCell).to.have.deep.property('items[1].level', 1);
+      });
+      it('should process items with a reference', () => {
+        // Simplest reference
+        //
+        expect(theCell).to.have.deep.property('items[2].children[0].text', 'item2');
+        expect(theCell).to.have.deep.property('items[2].ref[0].href', 'http://google.com');
+        expect(theCell).to.have.deep.property('items[2].ref[0].runs[0].text', 'Google');
+
+        // "[出處" broken into different runs, should not affect parsing
+        //
+        expect(theCell).to.have.deep.property('items[3].children[0].text', 'item3');
+        expect(theCell).to.have.deep.property('items[3].ref[0].href', 'http://google.com');
+
+        // "[出處" cut by hyperlinks, still should not affect parsing.
+        // Have comments in reference. Hyperlinks will be cut in two by the comment.
+        //
+        expect(theCell).to.have.deep.property('items[4].children[0].text', 'item4');
+        expect(theCell).to.have.deep.property('items[4].ref').to.have.length(2);
+        expect(theCell).to.have.deep.property('items[4].ref[0].href', 'http://google.com');
+        expect(theCell).to.have.deep.property('items[4].ref[0].runs[0].text', 'Go');
+
+        // No content, only reference
+        //
+        expect(theCell).to.have.deep.property('items[7].children').to.have.length(0);
+        expect(theCell).to.have.deep.property('items[7].ref[0].runs[0].text', 'reference only');
+      });
+      it('should process items with labels', () => {
+        expect(theCell).to.have.deep.property('items[5].labels').to.have.length(2);
+        expect(theCell).to.have.deep.property('items[5].labels[1]', 'LABEL2');
+
+        expect(theCell).to.have.deep.property('items[6].labels[0]', 'LABEL ONLY');
+      });
+    });
   });
 
   describe('processParagraph', () => {

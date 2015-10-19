@@ -1,7 +1,7 @@
 /* Table parser */
 
 import {COMMENTS, ERRORS} from './constants';
-import {ColGroup, RowGroup, Paragraph, HyperLink, Run} from './components';
+import {ColGroup, RowGroup, Paragraph, HyperLink, Run, DataCell} from './components';
 
 export async function parseToDocument(xml, jsdomMode='xml') {
   if(typeof window !== 'undefined') {
@@ -94,11 +94,13 @@ function processParagraphChildren(childNodes, hyperLinkMap, config, commentIdsIn
     let node = nodeQueue[i];
     switch(node.nodeName){
       case 'w:hyperlink':
-        if( config.HIGHLIGHT ){
+        if( config.HIGHLIGHT || config.__REFERENCE__ ){
           lastRun = null; // Force new run
           let hyperlink = new HyperLink(hyperLinkMap[node.getAttribute('r:id')]);
           hyperlink.runs = processParagraphChildren(node.childNodes, hyperLinkMap, config, commentIdsInRange);
-          children.push(hyperlink);
+          if(hyperlink.runs.length > 0){
+            children.push(hyperlink);
+          }
         } else {
           // Directly unwrap the w:hyperlink
           nodeQueue.splice(i+1, 0, ...node.childNodes)
@@ -124,7 +126,7 @@ function processParagraphChildren(childNodes, hyperLinkMap, config, commentIdsIn
                               lastRun.isI === runCfg.isI &&
                               lastRun.isU === runCfg.isU;
 
-          if (!config.HIGHLIGHT || (config.HIGHLIGHT && isConfigMatch)) {
+          if (!config.HIGHLIGHT || config.__REFERENCE__ || (config.HIGHLIGHT && isConfigMatch)) {
             // Reuse lastRun
             lastRun.text += node.textContent;
             continue;
@@ -153,6 +155,69 @@ function processParagraphChildren(childNodes, hyperLinkMap, config, commentIdsIn
   return children;
 }
 
+// Given an array of <w:t> elements, clean up the first leading spaces and
+// the last trailing spaces across elements.
+//
+function trimTElems(tElems) {
+  // Leading space
+  //
+
+  for(let tElem of tElems) {
+    if(!tElem.parentNode) {continue;} // Already removed before
+
+    tElem.textContent = tElem.textContent.replace(/^\s*/, '');
+    if(tElem.textContent.length > 0) { // No more to clean
+      break;
+    }
+    tElem.parentNode.removeChild(tElem);
+  }
+
+  // Trailing space
+  //
+  for(let k = tElems.length-1; k >= 0; k-=1){
+    let tElem = tElems[k];
+    if(!tElem.parentNode) {continue;} // Already removed before
+
+    tElem.textContent = tElem.textContent.replace(/\s*$/, '');
+    if(tElem.textContent.length > 0){ // No more to clean
+      break;
+    }
+    tElem.parentNode.removeChild(tElem);
+  }
+}
+
+function removePrefixByWordCount(tElems, wordCountToRemove) {
+  for(let k = 0; k < tElems.length && wordCountToRemove > 0; k += 1){
+    let tElem = tElems[k];
+    if(!tElem.parentNode) {continue;} // Already removed
+
+    if(tElem.textContent.length <= wordCountToRemove){
+      wordCountToRemove -= tElem.textContent.length;
+      tElem.parentNode.removeChild(tElem);
+
+    }else{
+      tElem.textContent = tElem.textContent.slice(wordCountToRemove);
+      break;
+    }
+  }
+}
+
+function removeSuffixByWordCount(tElems, wordCountToRemove) {
+  for(let k = tElems.length-1; k >=0  && wordCountToRemove > 0; k -= 1){
+    let tElem = tElems[k];
+    if(!tElem.parentNode) {continue;} // Already removed
+
+    if(tElem.textContent.length <= wordCountToRemove){
+      wordCountToRemove -= tElem.textContent.length;
+      tElem.parentNode.removeChild(tElem);
+
+    }else{
+      tElem.textContent = tElem.textContent.slice(0, -wordCountToRemove);
+      break;
+    }
+  }
+}
+
 // Process runs, hyperlinks and comments in a single paragraph
 // into a paragraph instance.
 //
@@ -162,6 +227,8 @@ export function processParagraph(pElem, hyperLinkMap, config) {
   if(numPrElem) {
     level = +numPrElem.querySelector('w\\:ilvl').getAttribute('w:val')
   }
+
+  trimTElems(pElem.querySelectorAll('w\\:t'));
 
   let paragraph = new Paragraph(level);
   paragraph.children = processParagraphChildren(pElem.childNodes, hyperLinkMap, config);
@@ -234,6 +301,8 @@ export function processBodyRows(rowElems, hyperLinkMap, config) {
   let rows = [];
   let parentHeaderOfLevel = []; // Maps header level to parent header
 
+  // Rows
+  //
   for(let i = config.HEADER_ROWS; i<rowElems.length; i+=1){
     let cellElems = rowElems[i].querySelectorAll('w\\:tc');
 
@@ -279,17 +348,117 @@ export function processBodyRows(rowElems, hyperLinkMap, config) {
 
     // Row data cells
     //
+    let leafHeader = parentHeaderOfLevel[config.HEADER_COLUMNS-1];
     for(let j = headerCellCount; j < cellElems.length ; j+=1){
+      let cell = new DataCell;
       let cellElem = cellElems[j];
       if(cellElem.querySelector('w\\:vMerge') || cellElem.querySelector('w\\:gridSpan')) {
         throw ERRORS.INVALID_MERGING;
       }
 
+      // Each paragraph in a data cell
+      //
       Array.prototype.forEach.call(cellElem.querySelectorAll('w\\:p'), pElem => {
+        if(pElem.querySelector('w\\:numPr') === null) {
+          // Summary paragraph
+          //
+          cell.summaryParagraphs.push(processParagraph(pElem, hyperLinkMap, config));
 
-      });
-    }
-  }
+        } else {
+          // Paragraph is list item
+          //
+
+          // Process references
+          let ref;
+          let refMatch = pElem.textContent.match(/\[出處[^\]]+\]\s*$/im);
+          if (refMatch) {
+
+            // Remove the elements that composes the reference from pElem.
+            // Process those reference runs / hyperlinks and store them in ref.
+            //
+            let wordCountToExtract = refMatch[0].length;
+            let childElems = pElem.childNodes; // either <w:Hyperlink> or <w:r> directly under <w:p>
+            let refElems = [];
+
+            for(let k = childElems.length-1; k >= 0 && wordCountToExtract > 0; k-=1){
+              let childElem = childElems[k];
+              let copiedElem = childElem.cloneNode(true);
+              refElems.unshift(copiedElem);
+
+              // Process <w:t>s of the current child element(either <w:hyperlink> or <w:r>)
+              let childTElems = childElem.querySelectorAll('w\\:t');
+              for(let m = childTElems.length-1; m>=0 && wordCountToExtract >= 0; m-=1){
+                let childTElem = childTElems[m];
+                if(childTElem.textContent.length <= wordCountToExtract) {
+                  wordCountToExtract -= childTElem.textContent.length;
+                  childTElem.parentNode.removeChild(childTElem);
+                } else {
+
+                  // Remove the part that belongs to reference in childTElems
+                  childTElem.textContent = childTElem.textContent.slice(0, -wordCountToExtract);
+
+                  // Just keep the <w:t>s that is part of reference in copiedTElems.
+                  let copiedTElems = copiedElem.querySelectorAll('w\\:t');
+                  copiedTElems[m].textContent = copiedTElems[m].textContent.slice(-wordCountToExtract);
+                  for(let n = 0; n < m; n+=1) {
+                    copiedTElems[n].parentNode.removeChild(copiedTElems[n])
+                  }
+
+                  wordCountToExtract = 0;
+                }
+              } // <w:t>s
+            } // paragraph's child elements
+
+            let refTElems = [];
+            for(let refElem of refElems) {
+              let tElems = refElem.querySelectorAll('w\\:t');
+              if(!tElems){ continue; }
+              for(let tElem of tElems){
+                refTElems.push(tElem);
+              }
+            }
+
+            trimTElems(refTElems);
+
+            // Remove '[出處' prefix from the collected refElems
+            //
+            removePrefixByWordCount(refTElems, '[出處'.length);
+
+            // Remove ']' suffix from the collected refElems
+            //
+            removeSuffixByWordCount(refTElems, ']'.length);
+
+            // Trim again, since there may be space between prefix, reference contents and suffix.
+            trimTElems(refTElems);
+
+            // Convert refElems into JS objects
+            //
+            ref = processParagraphChildren(refElems, hyperLinkMap, {__REFERENCE__: true});
+          }
+
+          // Process labels
+          let labels;
+          let labelsMatch = pElem.textContent.match(/^(?:\s*\[[^\]]+\])+/);
+          if (labelsMatch) {
+            labels = Array.prototype.map.call(labelsMatch[0].match(/\[[^\]]+\]/g),
+                               labelWithBracket => labelWithBracket.slice(1, -1));
+
+            // Remove labels from pElem's descendents
+            //
+            removePrefixByWordCount(pElem.querySelectorAll('w\\:t'), labelsMatch[0].length)
+          }
+
+          // Process the rest of the paragraph
+          let paragraph = processParagraph(pElem, hyperLinkMap, config);
+
+          // Push the paragraph into cell.items
+          cell.addItem(paragraph, ref, labels);
+        }
+      }); // paragraph
+
+      leafHeader.cells.push(cell);
+    } // cell
+  } // row
 
   return rows
 }

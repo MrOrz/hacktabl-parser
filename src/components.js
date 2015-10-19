@@ -49,7 +49,7 @@ export class DataCell {
     this.items = [];
   }
 
-  addItem(paragraph, ref, label = []) {
+  addItem(paragraph, ref = [], labels = []) {
     this.items.push({
       level: paragraph.level,
       children: paragraph.children, // Mixed with runs and hyperlinks
