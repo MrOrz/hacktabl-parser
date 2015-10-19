@@ -95,7 +95,7 @@ function processParagraphChildren(childNodes, hyperLinkMap, config, commentIdsIn
       case 'w:hyperlink':
         if( config.HIGHLIGHT ){
           lastRun = null; // Force new run
-          let hyperlink = new HyperLink();
+          let hyperlink = new HyperLink(hyperLinkMap[node.getAttribute('r:id')]);
           hyperlink.children = processParagraphChildren(node.childNodes, hyperLinkMap, config, commentIdsInRange);
           children.push(hyperlink);
         } else {

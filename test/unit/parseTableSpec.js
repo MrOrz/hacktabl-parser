@@ -94,7 +94,6 @@ describe('htparser.parseTable', () => {
       let doc = await parseToDocument(readFixture('processParagraph.xml'));
       paragraphs = doc.querySelectorAll('w\\:body > w\\:p');
       hyperLinkMap = await parseRels(readFixture('processParagraph.xml.rels'));
-      console.log('HYPERLINK_MAP', hyperLinkMap);
     });
 
     it('should process paragraph with 1 single run', () => {
