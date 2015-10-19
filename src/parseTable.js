@@ -48,10 +48,10 @@ export async function parseComments(commentsXML) {
   //
   let commentMap = {};
 
-  for(let commentElement of commentsDocument.querySelectorAll('w\\:comment')){
-    let id = commentElement.getAttribute('w:id');
+  for(let commentElem of commentsDocument.querySelectorAll('w\\:comment')){
+    let id = commentElem.getAttribute('w:id');
     let text =
-      Array.prototype.map.call(commentElement.querySelectorAll('w\\:t'),
+      Array.prototype.map.call(commentElem.querySelectorAll('w\\:t'),
           t => t.textContent.trim())
         .join("\n");
 
@@ -71,8 +71,8 @@ export async function parseComments(commentsXML) {
     }
 
     commentMap[id] = {
-      author: commentElement.getAttribute('w:author'),
-      date: new Date(commentElement.getAttribute('w:date')),
+      author: commentElem.getAttribute('w:author'),
+      date: new Date(commentElem.getAttribute('w:date')),
       id, type, text
     };
   };
@@ -179,12 +179,12 @@ export function processHeaderRows(rowElems, hyperLinkMap, config) {
     let isFirstRow = i === 0;
     let isLeafRow = i === config.HEADER_ROWS-1;
 
-    let cells = rowElems[i].querySelectorAll('w\\:tc');
+    let cellElems = rowElems[i].querySelectorAll('w\\:tc');
     let columnId = 0; // 0 ~ (total column count)-1
 
-    for(let j = 0; j < cells.length; j+=1){
-      let cell = cells[j];
-      let gridSpanElem = cell.querySelector('w\\:gridSpan');
+    for(let j = 0; j < cellElems.length; j+=1){
+      let cellElem = cellElems[j];
+      let gridSpanElem = cellElem.querySelector('w\\:gridSpan');
       let colspan = 1;
 
       if (gridSpanElem) {
@@ -198,7 +198,7 @@ export function processHeaderRows(rowElems, hyperLinkMap, config) {
       }
 
       let colgroup = new ColGroup(
-        Array.prototype.map.call(cell.querySelectorAll('w\\:p'), p => processParagraph(p, hyperLinkMap, config)),
+        Array.prototype.map.call(cellElem.querySelectorAll('w\\:p'), p => processParagraph(p, hyperLinkMap, config)),
         isLeafRow
       );
 
