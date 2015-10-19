@@ -1,19 +1,19 @@
 export class ColGroup {
-  constructor(title, isLeaf = false) {
-    this.title = title;
+  constructor(paragraphs, isLeaf = false) {
+    this.paragraphs = paragraphs;
     if(!isLeaf){
-      this.children = [];
+      this.children = []; // nested ColGroups
     }
   }
 };
 
 export class RowGroup {
-  constructor(title, cells) {
-    this.title = title;
+  constructor(paragraphs, cells) {
+    this.paragraphs = paragraphs;
     if(cells) {
       this.cells = cells;
     } else {
-      this.children = [];
+      this.children = []; // nested RowGroups
     }
   }
 };
@@ -28,7 +28,7 @@ export class Paragraph {
 export class HyperLink {
   constructor(href) {
     this.href = href;
-    this.children = []; // runs
+    this.runs = []; // runs
   }
 };
 

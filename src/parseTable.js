@@ -35,8 +35,8 @@ export async function parseRels(relsXML) {
   let relsDocument = await parseToDocument(relsXML, 'html');
 
   let hyperLinkMap = {};
-  for(let hyperLink of relsDocument.querySelectorAll('relationship[type$="hyperlink"]')) {
-    hyperLinkMap[hyperLink.getAttribute('Id')] = hyperLink.getAttribute('Target');
+  for(let hyperLinkElem of relsDocument.querySelectorAll('relationship[type$="hyperlink"]')) {
+    hyperLinkMap[hyperLinkElem.getAttribute('Id')] = hyperLinkElem.getAttribute('Target');
   }
 
   return hyperLinkMap;
@@ -97,7 +97,7 @@ function processParagraphChildren(childNodes, hyperLinkMap, config, commentIdsIn
         if( config.HIGHLIGHT ){
           lastRun = null; // Force new run
           let hyperlink = new HyperLink(hyperLinkMap[node.getAttribute('r:id')]);
-          hyperlink.children = processParagraphChildren(node.childNodes, hyperLinkMap, config, commentIdsInRange);
+          hyperlink.runs = processParagraphChildren(node.childNodes, hyperLinkMap, config, commentIdsInRange);
           children.push(hyperlink);
         } else {
           // Directly unwrap the w:hyperlink

@@ -58,25 +58,25 @@ describe('htparser.parseTable', () => {
     it('should process single-row header', () => {
       let columnHeaders = processHeaderRows(tables[0], {}, processConfig({DOC_ID:'foo', HEADER_COLUMNS: 2}));
       expect(columnHeaders).to.have.length(1);
-      expect(columnHeaders[0]).to.have.property('title').and.have.length(1);
-      expect(columnHeaders[0]).to.have.deep.property('title[0].children').and.have.length(1);
-      expect(columnHeaders[0]).to.have.deep.property('title[0].children[0].text', 'COL_HEADER');
+      expect(columnHeaders[0]).to.have.property('paragraphs').and.have.length(1);
+      expect(columnHeaders[0]).to.have.deep.property('paragraphs[0].children').and.have.length(1);
+      expect(columnHeaders[0]).to.have.deep.property('paragraphs[0].children[0].text', 'COL_HEADER');
       expect(columnHeaders[0]).not.to.have.property('children');
     });
 
     it('should process multiple-row header with merges', () => {
       let columnHeaders = processHeaderRows(tables[1], {}, processConfig({DOC_ID:'foo', HEADER_ROWS: 3}));
       expect(columnHeaders).to.have.length(2);
-      expect(columnHeaders[1]).to.have.property('title').and.have.length(1);
-      expect(columnHeaders[1]).to.have.deep.property('title[0].children[0].text', 'COL_HEADER_2');
+      expect(columnHeaders[1]).to.have.property('paragraphs').and.have.length(1);
+      expect(columnHeaders[1]).to.have.deep.property('paragraphs[0].children[0].text', 'COL_HEADER_2');
       expect(columnHeaders[0]).to.have.property('children').and.have.length(2);
-      expect(columnHeaders[0]).to.have.deep.property('children[1].title[0].children[0].text', 'COL_HEADER_4');
+      expect(columnHeaders[0]).to.have.deep.property('children[1].paragraphs[0].children[0].text', 'COL_HEADER_4');
       expect(columnHeaders[0]).to.have.deep.property('children[1].children').and.have.length(2);
-      expect(columnHeaders[0]).to.have.deep.property('children[1].children[0].title[0].children[0].text', 'COL_HEADER_9');
+      expect(columnHeaders[0]).to.have.deep.property('children[1].children[0].paragraphs[0].children[0].text', 'COL_HEADER_9');
 
       expect(columnHeaders[1]).to.have.deep.property('children[0].children').and.have.length(1);
       // Merged with COL_HEADER_5, expected to be empty
-      expect(columnHeaders[1]).to.have.deep.property('children[0].children[0].title[0].children').to.have.length(0);
+      expect(columnHeaders[1]).to.have.deep.property('children[0].children[0].paragraphs[0].children').to.have.length(0);
     });
 
     it('should detect invalid nesting on column headers', () => {
@@ -158,7 +158,7 @@ describe('htparser.parseTable', () => {
 
       let hyperlink = paragraph.children[2];
       expect(hyperlink).to.have.property('href', 'http://google.com');
-      expect(hyperlink.children).to.have.length(1);
+      expect(hyperlink).to.have.property('runs').and.have.length(1);
     });
   });
 });
