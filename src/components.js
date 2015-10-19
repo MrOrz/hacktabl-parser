@@ -8,10 +8,11 @@ export class ColGroup {
 };
 
 export class RowGroup {
-  constructor(paragraphs, cells) {
+  constructor(paragraphs, colspan = 1, isLeaf = false) {
     this.paragraphs = paragraphs;
-    if(cells) {
-      this.cells = cells;
+    this.colspan = colspan;
+    if(isLeaf) {
+      this.cells = [];
     } else {
       this.children = []; // nested RowGroups
     }
@@ -39,5 +40,21 @@ export class Run {
     this.isB = config.isB || false; // bold
     this.isU = config.isU || false; // underlined
     this.isI = config.isI || false; // italic
+  }
+}
+
+export class DataCell {
+  constructor() {
+    this.summaryParagraphs = [];
+    this.items = [];
+  }
+
+  addItem(paragraph, ref, label = []) {
+    this.items.push({
+      level: paragraph.level,
+      children: paragraph.children, // Mixed with runs and hyperlinks
+      labels, // Array of label text
+      ref,    // Mixed with runs and hyperlinks
+    });
   }
 }

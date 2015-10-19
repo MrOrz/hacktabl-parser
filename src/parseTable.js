@@ -169,6 +169,11 @@ export function processParagraph(pElem, hyperLinkMap, config) {
   return paragraph;
 }
 
+function processTitleCellParagraphs(cellElem, hyperLinkMap, config){
+  return Array.prototype.map.call(cellElem.querySelectorAll('w\\:p'), p =>
+    processParagraph(p, hyperLinkMap, config));
+}
+
 // Process header rows to populate header rows (column headers)
 //
 export function processHeaderRows(rowElems, hyperLinkMap, config) {
@@ -185,11 +190,7 @@ export function processHeaderRows(rowElems, hyperLinkMap, config) {
     for(let j = 0; j < cellElems.length; j+=1){
       let cellElem = cellElems[j];
       let gridSpanElem = cellElem.querySelector('w\\:gridSpan');
-      let colspan = 1;
-
-      if (gridSpanElem) {
-        colspan = +gridSpanElem.getAttribute('w:val') || colspan;
-      }
+      let colspan = gridSpanElem ? +gridSpanElem.getAttribute('w:val') : 1;
 
       if(columnId < config.HEADER_COLUMNS) {
         // Skipping header columns
@@ -197,15 +198,12 @@ export function processHeaderRows(rowElems, hyperLinkMap, config) {
         continue;
       }
 
-      let colgroup = new ColGroup(
-        Array.prototype.map.call(cellElem.querySelectorAll('w\\:p'), p => processParagraph(p, hyperLinkMap, config)),
-        isLeafRow
-      );
+      let colGroup = new ColGroup(processTitleCellParagraphs(cellElem, hyperLinkMap, config), isLeafRow);
 
       if(isFirstRow) {
-        columnHeaders.push(colgroup);
+        columnHeaders.push(colGroup);
       }else{
-        parentHeaderOfColumn[columnId].children.push(colgroup);
+        parentHeaderOfColumn[columnId].children.push(colGroup);
       }
 
 
@@ -223,13 +221,77 @@ export function processHeaderRows(rowElems, hyperLinkMap, config) {
         if(parentHeader !== parentHeaderOfColumn[columnId]) {
           throw ERRORS.INVALID_COLUMN_HEADER_NESTING;
         }
-        parentHeaderOfColumn[columnId] = colgroup;
+        parentHeaderOfColumn[columnId] = colGroup;
         columnId += 1;
       }
     }
   }
 
   return columnHeaders;
+}
+
+export function processBodyRows(rowElems, hyperLinkMap, config) {
+  let rows = [];
+  let parentHeaderOfLevel = []; // Maps header level to parent header
+
+  for(let i = config.HEADER_ROWS; i<rowElems.length; i+=1){
+    let cellElems = rowElems[i].querySelectorAll('w\\:tc');
+
+
+    // Row header cells
+    //
+    let headerCellCount = 0;
+    for(let j = 0; j < config.HEADER_COLUMNS; headerCellCount += 1){
+      let cellElem = cellElems[j];
+      let gridSpanElem = cellElem.querySelector('w\\:gridSpan');
+      let vMergeElem = cellElem.querySelector('w\\:vMerge');
+
+      let colspan = gridSpanElem ? +gridSpanElem.getAttribute('w:val') : 1;
+      let isLeaf = j + colspan === config.HEADER_COLUMNS;
+      let isVerticallyMerged = !!vMergeElem;
+      let isVerticallyContinuing = isVerticallyMerged && vMergeElem.getAttribute('w:val') === 'continue';
+
+      if(isLeaf && isVerticallyMerged) {
+        throw ERRORS.INVALID_MERGED_ROW_HEADER;
+      }
+
+      if(!isVerticallyContinuing){
+        let rowGroup = new RowGroup(processTitleCellParagraphs(cellElem, hyperLinkMap, config), colspan, isLeaf);
+
+        if( j === 0 ){
+          rows.push(rowGroup);
+        } else {
+          parentHeaderOfLevel[j-1].children.push(rowGroup);
+        }
+
+        for( let k = 0; k<colspan; k+=1) {
+          parentHeaderOfLevel[j+k] = rowGroup;
+        }
+      }else if( j > 0 && -1 === parentHeaderOfLevel[j-1].children.indexOf(parentHeaderOfLevel[j])){
+        // The cell continues from the upper cell.
+        // Check if it is nested correctly.
+        //
+        throw ERRORS.INVALID_ROW_HEADER_NESTING;
+      }
+
+      j += colspan;
+    }
+
+    // Row data cells
+    //
+    for(let j = headerCellCount; j < cellElems.length ; j+=1){
+      let cellElem = cellElems[j];
+      if(cellElem.querySelector('w\\:vMerge') || cellElem.querySelector('w\\:gridSpan')) {
+        throw ERRORS.INVALID_MERGING;
+      }
+
+      Array.prototype.forEach.call(cellElem.querySelectorAll('w\\:p'), pElem => {
+
+      });
+    }
+  }
+
+  return rows
 }
 
 export default async function parseTable (xmls, config) {
@@ -240,9 +302,8 @@ export default async function parseTable (xmls, config) {
   let tableElem = docDocument.querySelector('w\\:tbl');
   let rowElems = tableElem.querySelectorAll('w\\:tr');
 
-  let columnHeaders = processHeaderRows(rowElems, hyperLinkMap, config);
-
   return {
-
+    columns: processHeaderRows(rowElems, hyperLinkMap, config),
+    rows: processBodyRows(rowElems, hyperLinkMap, config)
   }
 }

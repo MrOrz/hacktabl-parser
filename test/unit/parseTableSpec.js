@@ -1,5 +1,8 @@
 import {expect} from 'chai';
-import parseTable, {parseComments, processHeaderRows, processParagraph, parseToDocument, parseRels} from '../../src/parseTable';
+import parseTable, {
+  parseComments, processHeaderRows, processParagraph, parseToDocument,
+  parseRels, processBodyRows
+} from '../../src/parseTable';
 import {processConfig} from '../../src/fetchConfig';
 import {ERRORS, COMMENTS} from '../../src/';
 import fs from 'fs';
@@ -83,6 +86,55 @@ describe('htparser.parseTable', () => {
       expect(() => processHeaderRows(tables[2], {}, processConfig({DOC_ID:'foo'}))).to.throw(ERRORS.INVALID_MERGED_COLUMN_HEADER);
       expect(() => processHeaderRows(tables[3], {}, processConfig({DOC_ID:'foo', HEADER_ROWS: 3}))).to.throw(ERRORS.INVALID_COLUMN_HEADER_NESTING);
     });
+  });
+
+  describe('processBodyRows', () => {
+    describe('header cell processing', () => {
+      //
+      // See the real tables:
+      //
+      // https://docs.google.com/document/d/1xaIh6mx4pJFZg0s5iRDqxAUPLhggR_nxRt-yroOHI6k/edit?usp=sharing
+      //
+      let tables;
+
+      before('populate tables', async function(){
+        let doc = await parseToDocument(readFixture('processBodyRows-rowheader.xml'));
+        tables = Array.prototype.map.call(doc.querySelectorAll('w\\:tbl'), (tableElem) => {
+          return tableElem.querySelectorAll('w\\:tr');
+        });
+      });
+
+      it('should process single-row header', () => {
+        let rows = processBodyRows(tables[0], {}, processConfig({DOC_ID:'foo'}));
+        expect(rows).to.have.length(2);
+        expect(rows[0]).to.have.property('paragraphs').and.have.length(1);
+        expect(rows[0]).to.have.deep.property('paragraphs[0].children').and.have.length(1);
+        expect(rows[0]).to.have.deep.property('paragraphs[0].children[0].text', 'ROW_HEADER_1');
+        expect(rows[0]).not.to.have.property('children');
+      });
+
+      it('should process multiple-row header with merges', () => {
+        let rows = processBodyRows(tables[1], {}, processConfig({DOC_ID:'foo', HEADER_COLUMNS: 3}));
+        expect(rows).to.have.length(2);
+        expect(rows[1]).to.have.property('paragraphs').and.have.length(1);
+        expect(rows[1]).to.have.deep.property('paragraphs[0].children[0].text', 'ROW_HEADER_2');
+        expect(rows[0]).to.have.property('children').and.have.length(2);
+        expect(rows[0]).to.have.deep.property('children[1].paragraphs[0].children[0].text', 'ROW_HEADER_4');
+        expect(rows[0]).to.have.deep.property('children[1].children').and.have.length(2);
+        expect(rows[0]).to.have.deep.property('children[1].children[0].paragraphs[0].children[0].text', 'ROW_HEADER_9');
+
+        // Horizontally merged cell that is adjacent to data cell.
+        expect(rows[1]).to.have.deep.property('children[0]').to.not.have.property('children');
+        expect(rows[1]).to.have.deep.property('children[0]').to.have.property('colspan', 2);
+      });
+
+      it('should detect invalid nesting on column headers', () => {
+        expect(() => processBodyRows(tables[2], {}, processConfig({DOC_ID:'foo'}))).to.throw(ERRORS.INVALID_MERGED_ROW_HEADER);
+        expect(() => processBodyRows(tables[3], {}, processConfig({DOC_ID:'foo', HEADER_COLUMNS: 3}))).to.throw(ERRORS.INVALID_ROW_HEADER_NESTING);
+      });
+    });
+
+    // describe('data cell processing');
   });
 
   describe('processParagraph', () => {
