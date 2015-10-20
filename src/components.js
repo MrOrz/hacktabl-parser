@@ -5,6 +5,8 @@ export class ColGroup {
       this.children = []; // nested ColGroups
     }
   }
+
+  foo(){}
 };
 
 export class RowGroup {
@@ -17,6 +19,8 @@ export class RowGroup {
       this.children = []; // nested RowGroups
     }
   }
+
+  foo(){}
 };
 
 export class Paragraph {
@@ -24,6 +28,8 @@ export class Paragraph {
     this.level = level; // -1: normal text, not inside any list
     this.children = []; // Mixed with runs and hyperlinks
   }
+
+  foo(){}
 };
 
 export class HyperLink {
@@ -31,6 +37,8 @@ export class HyperLink {
     this.href = href;
     this.runs = []; // runs
   }
+
+  foo(){}
 };
 
 export class Run {
@@ -41,6 +49,8 @@ export class Run {
     this.isU = config.isU || false; // underlined
     this.isI = config.isI || false; // italic
   }
+
+  foo(){}
 }
 
 export class DataCell {
