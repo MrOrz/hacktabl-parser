@@ -148,7 +148,6 @@ describe('htparser.parseTable', () => {
         theCell = processBodyRows(doc.querySelectorAll('w\\:tr'), {
           rId11: URL, rId10: URL, rId9: URL, rId5: URL, rId6: URL, rId7: URL, rId8: URL,
         }, processConfig({DOC_ID: 'foo'}))[0].cells[0];
-        console.log('THE_CELL', JSON.stringify(theCell, null, "  "));
       });
 
       it('should process summary paragraphs', () => {
