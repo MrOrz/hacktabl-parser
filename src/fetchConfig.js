@@ -47,7 +47,7 @@ export default async function fetchConfig (etherCalcId) {
   // Process CSV data into key-value pairs (object)
 
   let configObj = {}
-  for(let row of csvData) {
+  for(let row of csvData.split('\n')) {
     let columns = row.split(',').map(word => word.match(/^"?(.*?)"?$/)[1]);
     if(columns.length >= 2) {
       configObj[columns[0]] = columns[1];

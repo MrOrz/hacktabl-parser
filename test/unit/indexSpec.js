@@ -1,8 +1,14 @@
 import {expect} from 'chai';
-import parser from '../../src';
+import parser, {fetchDoc, parseTable} from '../../src';
+import {processConfig} from '../../src/fetchConfig';
 
-describe('trivial', () => {
-  it('should pass', () => {
-    expect(true).to.be.true;
+describe('htparser', () => {
+  it.only('should parse everything given an etherCalcId (requires Internet)', async function() {
+    this.timeout(10000); // Fetching and parsing takes lots of time...
+
+    let {config, table} = await parser('HACKTABL_PARSER_TEST');
+
+    expect(config).to.have.property('TITLE', 'Hacktabl parser fixture');
+    expect(table).to.have.deep.property('rows[0].cells[0].items[0].children[1].text', '加入 TPP 的各層面問題');
   });
 });
