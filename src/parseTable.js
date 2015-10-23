@@ -387,7 +387,7 @@ export function processBodyRows(rowElems, hyperLinkMap, config) {
 
               // Process <w:t>s of the current child element(either <w:hyperlink> or <w:r>)
               let childTElems = childElem.querySelectorAll('w\\:t');
-              for(let m = childTElems.length-1; m>=0 && wordCountToExtract >= 0; m-=1){
+              for(let m = childTElems.length-1; m>=0 && wordCountToExtract > 0; m-=1){
                 let childTElem = childTElems[m];
                 if(childTElem.textContent.length <= wordCountToExtract) {
                   wordCountToExtract -= childTElem.textContent.length;
