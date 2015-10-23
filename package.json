@@ -1,6 +1,6 @@
 {
   "name": "hacktabl-parser",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Parsing google doc w/ comparison table into Javascript object structure",
   "main": "lib/index.js",
   "browser": "lib/index.browser.js",
