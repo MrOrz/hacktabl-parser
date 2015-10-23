@@ -2,7 +2,7 @@ import {DEFAULTS, ERRORS, COMMENTS} from './constants';
 import fetchConfig from './fetchConfig';
 import fetchDoc from './fetchDoc';
 import parseTable from './parseTable';
-import components from './components'; // For developers to make 'instanceof' check.
+import * as components from './components'; // For developers to make 'instanceof' check.
 
 export {DEFAULTS, ERRORS, COMMENTS, fetchConfig, fetchDoc, parseTable, components};
 
