@@ -3,7 +3,7 @@ import parser, {fetchDoc, parseTable} from '../../src';
 import {processConfig} from '../../src/fetchConfig';
 
 describe('htparser', () => {
-  it.only('should parse everything given an etherCalcId (requires Internet)', async function() {
+  it('should parse everything given an etherCalcId (requires Internet)', async function() {
     this.timeout(10000); // Fetching and parsing takes lots of time...
 
     let {config, table} = await parser('HACKTABL_PARSER_TEST');
