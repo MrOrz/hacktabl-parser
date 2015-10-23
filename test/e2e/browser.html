@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ParseTabl e2e test</title>
+  <link rel="stylesheet" href="/node_modules/mocha/mocha.css">
+</head>
+<body>
+  <div id="mocha"></div>
+
+  <script src="/lib/index.browser.js"></script>
+
+  <script src="/node_modules/mocha/mocha.js"></script>
+  <script src="/node_modules/chai/chai.js"></script>
+
+  <script>mocha.setup('bdd');</script>
+  <script src="/test/e2e/index.js"></script>
+  <script>
+    mocha.checkLeaks();
+    mocha.run();
+  </script>
+</body>
+</html>
