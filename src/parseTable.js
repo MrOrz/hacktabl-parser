@@ -484,7 +484,6 @@ export function processBodyRows(rowElems, hyperLinkMap, config) {
 }
 
 export default async function parseTable (xmls, config) {
-  let commentMap = await parseComments(xmls.comments);
   let hyperLinkMap = await parseRels(xmls.rels);
   let docDocument = await parseToDocument(xmls.document);
 
@@ -493,6 +492,7 @@ export default async function parseTable (xmls, config) {
 
   return {
     columns: processHeaderRows(rowElems, hyperLinkMap, config),
-    rows: processBodyRows(rowElems, hyperLinkMap, config)
+    rows: processBodyRows(rowElems, hyperLinkMap, config),
+    commentMap: await parseComments(xmls.comments)
   }
 }
