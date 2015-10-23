@@ -3,13 +3,31 @@
 import {COMMENTS, ERRORS} from './constants';
 import {ColGroup, RowGroup, Paragraph, HyperLink, Run, DataCell} from './components';
 
+// querySelector wrapper
+//
+function $(selector, node){
+  if(typeof window === 'undefined') {
+    // jsdom does not support namespace selector (|) but can use colons...
+    selector = selector.replace(/\*\|/g, 'w\\:');
+  }
+  return node.querySelector(selector);
+}
+
+// querySelectorAll wrapper
+//
+function $$(selector, node){
+  if(typeof window === 'undefined') {
+    // jsdom does not support namespace selector (|) but can use colons...
+    selector = selector.replace(/\*\|/g, 'w\\:');
+  }
+  return node.querySelectorAll(selector);
+}
+
 export async function parseToDocument(xml, jsdomMode='xml') {
   if(typeof window !== 'undefined') {
-    // Browser environement
+    // Browser environment
     //
-
-    // use 'text/html' for querySelector support
-    return (new DOMParser).parseFromString(xml, 'text/html');
+    return (new DOMParser).parseFromString(xml, 'text/xml');
 
   } else {
     // NodeJS environment
@@ -48,10 +66,10 @@ export async function parseComments(commentsXML) {
   //
   let commentMap = {};
 
-  for(let commentElem of commentsDocument.querySelectorAll('w\\:comment')){
+  for(let commentElem of $$('*|comment', commentsDocument)){
     let id = commentElem.getAttribute('w:id');
     let text =
-      Array.prototype.map.call(commentElem.querySelectorAll('w\\:t'),
+      Array.prototype.map.call($$('*|t', commentElem),
           t => t.textContent.trim())
         .join("\n");
 
@@ -92,7 +110,7 @@ function processParagraphChildren(childNodes, hyperLinkMap, config, commentIdsIn
 
   for(let i = 0; i < nodeQueue.length; i+=1){
     let node = nodeQueue[i];
-    switch(node.nodeName){
+    switch(node.nodeName.toLowerCase()){
       case 'w:hyperlink':
         if( config.HIGHLIGHT || config.__REFERENCE__ ){
           lastRun = null; // Force new run
@@ -111,9 +129,9 @@ function processParagraphChildren(childNodes, hyperLinkMap, config, commentIdsIn
       case 'w:r':
         let runCfg = {
           text: node.textContent,
-          isB: node.querySelector('w\\:rPr > w\\:b[w\\:val="1"]') !== null,
-          isI: node.querySelector('w\\:rPr > w\\:i[w\\:val="1"]') !== null,
-          isU: node.querySelector('w\\:rPr > w\\:u[w\\:val="1"]') !== null,
+          isB: $('*|rPr > *|b[*|val="1"]', node) !== null,
+          isI: $('*|rPr > *|i[*|val="1"]', node) !== null,
+          isU: $('*|rPr > *|u[*|val="1"]', node) !== null,
         };
 
         if(!runCfg.text) {
@@ -140,12 +158,12 @@ function processParagraphChildren(childNodes, hyperLinkMap, config, commentIdsIn
 
         break;
 
-      case 'w:commentRangeStart':
+      case 'w:commentrangestart':
         lastRun = null; // Force new run
         commentIdsInRange[+node.getAttribute('w:id')] = true;
         break;
 
-      case 'w:commentRangeEnd':
+      case 'w:commentrangeend':
         lastRun = null; // Force new run
         delete commentIdsInRange[+node.getAttribute('w:id')];
         break;
@@ -223,12 +241,12 @@ function removeSuffixByWordCount(tElems, wordCountToRemove) {
 //
 export function processParagraph(pElem, hyperLinkMap, config) {
   let level = -1; // Normal text
-  let numPrElem = pElem.querySelector('w\\:pPr > w\\:numPr');
+  let numPrElem = $('*|pPr > *|numPr', pElem);
   if(numPrElem) {
-    level = +numPrElem.querySelector('w\\:ilvl').getAttribute('w:val')
+    level = +$('*|ilvl', numPrElem).getAttribute('w:val')
   }
 
-  trimTElems(pElem.querySelectorAll('w\\:t'));
+  trimTElems($$('*|t', pElem));
 
   let paragraph = new Paragraph(level);
   paragraph.children = processParagraphChildren(pElem.childNodes, hyperLinkMap, config);
@@ -237,7 +255,7 @@ export function processParagraph(pElem, hyperLinkMap, config) {
 }
 
 function processTitleCellParagraphs(cellElem, hyperLinkMap, config){
-  return Array.prototype.map.call(cellElem.querySelectorAll('w\\:p'), p =>
+  return Array.prototype.map.call($$('*|p', cellElem), p =>
     processParagraph(p, hyperLinkMap, config));
 }
 
@@ -251,12 +269,12 @@ export function processHeaderRows(rowElems, hyperLinkMap, config) {
     let isFirstRow = i === 0;
     let isLeafRow = i === config.HEADER_ROWS-1;
 
-    let cellElems = rowElems[i].querySelectorAll('w\\:tc');
+    let cellElems = $$('*|tc', rowElems[i]);
     let columnId = 0; // 0 ~ (total column count)-1
 
     for(let j = 0; j < cellElems.length; j+=1){
       let cellElem = cellElems[j];
-      let gridSpanElem = cellElem.querySelector('w\\:gridSpan');
+      let gridSpanElem = $('*|gridSpan', cellElem);
       let colspan = gridSpanElem ? +gridSpanElem.getAttribute('w:val') : 1;
 
       if(columnId < config.HEADER_COLUMNS) {
@@ -304,7 +322,7 @@ export function processBodyRows(rowElems, hyperLinkMap, config) {
   // Rows
   //
   for(let i = config.HEADER_ROWS; i<rowElems.length; i+=1){
-    let cellElems = rowElems[i].querySelectorAll('w\\:tc');
+    let cellElems = $$('*|tc', rowElems[i]);
 
 
     // Row header cells
@@ -312,8 +330,8 @@ export function processBodyRows(rowElems, hyperLinkMap, config) {
     let headerCellCount = 0;
     for(let j = 0; j < config.HEADER_COLUMNS; headerCellCount += 1){
       let cellElem = cellElems[j];
-      let gridSpanElem = cellElem.querySelector('w\\:gridSpan');
-      let vMergeElem = cellElem.querySelector('w\\:vMerge');
+      let gridSpanElem = $('*|gridSpan', cellElem);
+      let vMergeElem = $('*|vMerge', cellElem);
 
       let colspan = gridSpanElem ? +gridSpanElem.getAttribute('w:val') : 1;
       let isLeaf = j + colspan === config.HEADER_COLUMNS;
@@ -352,14 +370,14 @@ export function processBodyRows(rowElems, hyperLinkMap, config) {
     for(let j = headerCellCount; j < cellElems.length ; j+=1){
       let cell = new DataCell;
       let cellElem = cellElems[j];
-      if(cellElem.querySelector('w\\:vMerge') || cellElem.querySelector('w\\:gridSpan')) {
+      if($('*|vMerge', cellElem) || $('*|gridSpan', cellElem)) {
         throw ERRORS.INVALID_MERGING;
       }
 
       // Each paragraph in a data cell
       //
-      Array.prototype.forEach.call(cellElem.querySelectorAll('w\\:p'), pElem => {
-        if(pElem.querySelector('w\\:numPr') === null) {
+      Array.prototype.forEach.call($$('*|p', cellElem), pElem => {
+        if($('*|numPr', pElem) === null) {
           // Summary paragraph
           //
           cell.summaryParagraphs.push(processParagraph(pElem, hyperLinkMap, config));
@@ -386,7 +404,7 @@ export function processBodyRows(rowElems, hyperLinkMap, config) {
               refElems.unshift(copiedElem);
 
               // Process <w:t>s of the current child element(either <w:hyperlink> or <w:r>)
-              let childTElems = childElem.querySelectorAll('w\\:t');
+              let childTElems = $$('*|t', childElem);
               for(let m = childTElems.length-1; m>=0 && wordCountToExtract > 0; m-=1){
                 let childTElem = childTElems[m];
                 if(childTElem.textContent.length <= wordCountToExtract) {
@@ -398,7 +416,7 @@ export function processBodyRows(rowElems, hyperLinkMap, config) {
                   childTElem.textContent = childTElem.textContent.slice(0, -wordCountToExtract);
 
                   // Just keep the <w:t>s that is part of reference in copiedTElems.
-                  let copiedTElems = copiedElem.querySelectorAll('w\\:t');
+                  let copiedTElems = $$('*|t', copiedElem);
                   copiedTElems[m].textContent = copiedTElems[m].textContent.slice(-wordCountToExtract);
                   for(let n = 0; n < m; n+=1) {
                     copiedTElems[n].parentNode.removeChild(copiedTElems[n])
@@ -411,7 +429,7 @@ export function processBodyRows(rowElems, hyperLinkMap, config) {
 
             let refTElems = [];
             for(let refElem of refElems) {
-              let tElems = refElem.querySelectorAll('w\\:t');
+              let tElems = $$('*|t', refElem);
               if(!tElems){ continue; }
               for(let tElem of tElems){
                 refTElems.push(tElem);
@@ -445,7 +463,7 @@ export function processBodyRows(rowElems, hyperLinkMap, config) {
 
             // Remove labels from pElem's descendents
             //
-            removePrefixByWordCount(pElem.querySelectorAll('w\\:t'), labelsMatch[0].length)
+            removePrefixByWordCount($$('*|t', pElem), labelsMatch[0].length)
           }
 
           // Process the rest of the paragraph
@@ -468,8 +486,8 @@ export default async function parseTable (xmls, config) {
   let hyperLinkMap = await parseRels(xmls.rels);
   let docDocument = await parseToDocument(xmls.document);
 
-  let tableElem = docDocument.querySelector('w\\:tbl');
-  let rowElems = tableElem.querySelectorAll('w\\:tr');
+  let tableElem = $('*|tbl', docDocument);
+  let rowElems = $$('*|tr', tableElem);
 
   return {
     columns: processHeaderRows(rowElems, hyperLinkMap, config),
