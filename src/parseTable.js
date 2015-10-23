@@ -61,6 +61,8 @@ export async function parseRels(relsXML) {
 }
 
 export async function parseComments(commentsXML) {
+  if(!commentsXML) {return {};}
+
   let commentsDocument = await parseToDocument(commentsXML);
   // Parse comments
   //

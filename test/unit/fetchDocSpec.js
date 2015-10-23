@@ -24,4 +24,9 @@ describe('htparser.fetchDoc', () => {
       expect(data.comments).to.include('_ANCHORED_COMMENT_');
     });
   });
+  it('should handle documents without comments (requires Internet)', () => {
+    return fetchDoc('https://docs.google.com/feeds/download/documents/export/Export?id=1cS_G80kjpT-3YLdGlOAukVBEFAmZ-DE4i0SNYbmyWlg&revision=1&exportFormat=docx').then((data) => {
+      expect(data.comments).to.eql('');
+    });
+  })
 });

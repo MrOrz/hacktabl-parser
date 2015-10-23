@@ -74,7 +74,7 @@ export default async function fetchDoc (dataUrl) {
   let zip = new JSZip(docxBuffer);
   return {
     document: zip.file('word/document.xml').asText(),
-    comments: zip.file('word/comments.xml').asText(),
+    comments: zip.file('word/comments.xml') ? zip.file('word/comments.xml').asText() : "",
     rels: zip.file('word/_rels/document.xml.rels').asText()
   };
 

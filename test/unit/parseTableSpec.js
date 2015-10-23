@@ -41,6 +41,10 @@ describe('htparser.parseTable', () => {
       // Mistyped type
       expect(commentMap['26']).to.have.property('type', COMMENTS.OTHER);
     });
+
+    it('should handle empty comments', () => {
+      return expect(parseComments('')).to.eventually.eql({});
+    });
   });
 
   describe('processHeaderRows', () => {
