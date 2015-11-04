@@ -10,7 +10,6 @@ var STAGE = require('../package.json').config.babel_stage;
 
 require('babel/register')({
   stage: STAGE,
-  sourceMaps: 'inline',
   optional: ['runtime']
 });
 
