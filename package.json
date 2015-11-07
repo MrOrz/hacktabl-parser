@@ -11,7 +11,8 @@
     "test": "mocha --require ./config/mocha-babel test/unit/*.js",
     "testBrowser": "webpack && parallelshell \"python -m SimpleHTTPServer 8001\" \"open 'http://localhost:8001/test/e2e/browser.html'\"",
     "lint": "eslint --fix src/** test/unit/**",
-    "cover": "rm -rf ./coverage && istanbul cover _mocha --report html -- --require ./config/mocha-babel test/unit/*.js ",
+    "cover": "npm run cover:istanbul && istanbul report html && open coverage/index.html",
+    "cover:istanbul": "rm -rf ./coverage && istanbul cover _mocha --report json -- --require ./config/mocha-babel test/unit/*.js ",
     "travis": "rm -rf ./coverage && istanbul cover _mocha --report lcovonly -- --require ./config/mocha-babel test/unit/*.js && cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js"
   },
   "config": {
