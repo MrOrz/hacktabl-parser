@@ -46,4 +46,16 @@ describe('htparser.fetchConfig', () => {
     let overrideResult = processConfig({DOC_ID:"test", HEADER_COLUMNS: 3});
     expect(overrideResult.HEADER_COLUMNS).to.eql(3);
   });
+
+  it('should convert numeric options to number', () => {
+    let result = processConfig({
+      DOC_ID: 'foo',
+      HEADER_COLUMNS: '2',
+      HEADER_ROWS: '3',
+      LABEL_SUMMARY: '4'
+    });
+    expect(result).to.have.property('HEADER_COLUMNS', 2);
+    expect(result).to.have.property('HEADER_ROWS', 3);
+    expect(result).to.have.property('LABEL_SUMMARY', 4);
+  });
 });

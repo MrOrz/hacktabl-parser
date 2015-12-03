@@ -29,6 +29,9 @@ export function processConfig (configObj) {
   // Populate with the defaults
   for (let key of Object.keys(DEFAULTS)) {
     configObj[key] = configObj[key] || DEFAULTS[key];
+    if(typeof DEFAULTS[key] === 'number'){
+      configObj[key] = +configObj[key];
+    }
   }
 
   return configObj;
