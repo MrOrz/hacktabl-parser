@@ -53,7 +53,7 @@ export async function parseRels(relsXML) {
   let relsDocument = await parseToDocument(relsXML, 'html');
 
   let hyperLinkMap = {};
-  for(let hyperLinkElem of relsDocument.querySelectorAll('relationship[type$="hyperlink"]')) {
+  for(let hyperLinkElem of relsDocument.querySelectorAll('Relationship[Type$="hyperlink"]')) {
     hyperLinkMap[hyperLinkElem.getAttribute('Id')] = hyperLinkElem.getAttribute('Target');
   }
 
