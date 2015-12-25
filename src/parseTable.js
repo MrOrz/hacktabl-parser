@@ -1,6 +1,6 @@
 /* Table parser */
 
-import {COMMENTS, ERRORS} from './constants';
+import {ERRORS} from './constants';
 import {ColGroup, RowGroup, Paragraph, HyperLink, Run, DataCell} from './components';
 
 // querySelector wrapper
@@ -76,15 +76,10 @@ export async function parseComments(commentsXML) {
         .join("\n");
 
     let matches = text.match(/^\[([^\]]+)\]\s*/);
-    let type = COMMENTS.OTHER;
+    let type = null
 
     if(matches) {
-      switch(matches[1].trim()) {
-        case '補充說明': type = COMMENTS.NOTE; break;
-        case '需要出處': type = COMMENTS.REF_MISSING; break;
-        case '出處爭議': type = COMMENTS.REF_CONTROVERSIAL; break;
-        case '質疑': type = COMMENTS.QUESTIONABLE; break;
-      }
+      type = matches[1].trim()
 
       // Remove tag from comments
       text = text.slice(matches[0].length);
