@@ -58,4 +58,10 @@ describe('htparser.fetchConfig', () => {
     expect(result).to.have.property('HEADER_ROWS', 3);
     expect(result).to.have.property('LABEL_SUMMARY', 4);
   });
+
+  it('should not mangle with json DATA_URLs', () => {
+    const URL = 'https://raw.githubusercontent.com/MrOrz/president2016-history/gh-pages/data.json'
+    expect(processConfig({DATA_URL: URL, JSON_DATA: '1'}))
+    .to.have.property('DATA_URL', URL)
+  })
 });

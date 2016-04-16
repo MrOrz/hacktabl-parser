@@ -19,5 +19,6 @@ export const DEFAULTS = {
   LABEL_SUMMARY: 0,
   TITLE: 'Hacktabl: collaborative table for everyone',
   TYPE: 'EXPANDED',
-  EMPHASIZE_NO_REF: false
+  EMPHASIZE_NO_REF: false,
+  JSON_DATA: false, // Is json data or not
 };
