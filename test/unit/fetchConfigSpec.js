@@ -61,7 +61,11 @@ describe('htparser.fetchConfig', () => {
 
   it('should not mangle with json DATA_URLs', () => {
     const URL = 'https://raw.githubusercontent.com/MrOrz/president2016-history/gh-pages/data.json'
-    expect(processConfig({DATA_URL: URL, JSON_DATA: '1'}))
+    expect(() => processConfig({JSON_DATA: '1', EDIT_URL: 'foo'}))
+    .to.throw(ERRORS.NO_DATA_URL)
+    expect(() => processConfig({JSON_DATA: '1', DATA_URL: URL}))
+    .to.throw(ERRORS.NO_EDIT_URL)
+    expect(processConfig({DATA_URL: URL, JSON_DATA: '1', EDIT_URL: 'foo'}))
     .to.have.property('DATA_URL', URL)
   })
 });

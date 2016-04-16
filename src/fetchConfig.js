@@ -4,7 +4,14 @@ import {ERRORS, DEFAULTS} from './constants';
 /* Validates configuration, populate defaults, etc. */
 export function processConfig (configObj) {
 
-  if(!configObj.JSON_DATA) {
+  if(configObj.JSON_DATA) {
+    if (!configObj.DATA_URL) {
+      throw ERRORS.NO_DATA_URL;
+
+    } else if (!configObj.EDIT_URL) {
+      throw ERRORS.NO_EDIT_URL;
+    }
+  } else {
     if(configObj.DOC_ID) {
       configObj.EDIT_URL = configObj.EDIT_URL || `https://docs.google.com/document/d/${configObj.DOC_ID}/edit`;
       configObj.DATA_URL = configObj.DATA_URL || `https://docs.google.com/feeds/download/documents/export/Export?id=${configObj.DOC_ID}&exportFormat=docx`;
